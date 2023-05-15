@@ -1,0 +1,45 @@
+repos:
+  - repo: https://github.com/pycqa/isort
+    rev: dbf82f2dd09ae41d9355bcd7ab69187a19e6bf2f  # frozen: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  - repo: https://github.com/PyCQA/autoflake
+    rev: 14befe706742a2e4abb2de241372bb2a0592e7e1  # frozen: v2.1.1
+    hooks:
+      - id: autoflake
+        args:
+          [
+            "--in-place",
+            "--remove-unused-variables",
+            "--remove-all-unused-imports",
+            "--expand-star-imports",
+          ]
+
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: 2f25d5f34d9ed54bdcd3d0f8a23454da42283f67 # frozen: v2.4.0
+    hooks:
+      - id: add-trailing-comma
+
+  - repo: https://github.com/psf/black
+    rev: "bf7a16254ec96b084a6caf3d435ec18f0f245cc7" # frozen: 23.3.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/dosisod/refurb
+    rev: 7fb404137a6dbb8c7b346ffd904db5c17b1c24ed  # frozen: v1.16.0
+    hooks:
+      - id: refurb
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "11c1d1d46cde6812135d98d4ae0d2311de64a8dd"  # frozen: v0.0.267
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 'bd424e49d4f0181d4c8b8909a8cd5ce9eb058044'  # frozen: v1.3.0
+    hooks:
+    -   id: mypy
+

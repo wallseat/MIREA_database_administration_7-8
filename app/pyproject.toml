@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "shopper-cms"
+version = "0.1.0"
+description = ""
+authors = ["Stanislav Lyu. <wallseat@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.95.1"
+SQLAlchemy = "^2.0.11"
+uvicorn = "^0.22.0"
+pydantic = {extras = ["dotenv"], version = "^1.10.7"}
+psycopg = {extras = ["pool"], version = "^3.1.8"}
+psycopg-binary = "^3.1.8"
+python-ulid = "^1.1.0"
+alembic = "^1.10.4"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+returns = "^0.20.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+pre-commit = "^3.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
