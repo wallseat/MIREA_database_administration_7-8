@@ -3,12 +3,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.role import Entity, Permission
-from src.schemas.category import Category, CreateCategory, UpdateCategory
-from src.services import category_service
+from src.schemas.role import CreateRole, Role, UpdateRole
+from src.services import role_service
 
 from ._dependencies import get_session, permission_required
 
-router = APIRouter(tags=["category"])
+router = APIRouter(tags=["role"])
 
 
 @router.get(
@@ -16,20 +16,20 @@ router = APIRouter(tags=["category"])
     dependencies=[
         Depends(
             permission_required(
-                Entity.Category,
+                entity=Entity.Role,
                 permissions=(Permission.Read,),
             ),
         ),
     ],
-    response_model=list[Category],
+    response_model=list[Role],
     status_code=status.HTTP_200_OK,
 )
 async def get_all(
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    categories = await category_service.get_all(session)
+    roles = await role_service.get_all(session)
 
-    return categories
+    return roles
 
 
 @router.get(
@@ -37,21 +37,21 @@ async def get_all(
     dependencies=[
         Depends(
             permission_required(
-                Entity.Category,
+                entity=Entity.Role,
                 permissions=(Permission.Read,),
             ),
         ),
     ],
-    response_model=Category,
+    response_model=Role,
     status_code=status.HTTP_200_OK,
 )
 async def get_one(
     id_: str,
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    categories = await category_service.get(session, id_)
+    role = await role_service.get(session, id_)
 
-    return categories
+    return role
 
 
 @router.post(
@@ -59,29 +59,21 @@ async def get_one(
     dependencies=[
         Depends(
             permission_required(
-                Entity.Category,
+                entity=Entity.Role,
                 permissions=(Permission.Create, Permission.Read),
             ),
         ),
     ],
-    response_model=Category,
+    response_model=Role,
     status_code=status.HTTP_201_CREATED,
 )
 async def add_one(
-    create_category: CreateCategory,
+    create_role: CreateRole,
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    if create_category.parent_id:
-        parent = await category_service.get(session, create_category.parent_id)
-        if not parent:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Invalid parent id",
-            )
+    created_role = await role_service.create(session, create_role)
 
-    created_category = await category_service.create(session, create_category)
-
-    return created_category
+    return created_role
 
 
 @router.patch(
@@ -89,37 +81,29 @@ async def add_one(
     dependencies=[
         Depends(
             permission_required(
-                Entity.Category,
+                entity=Entity.Role,
                 permissions=(Permission.Update, Permission.Read),
             ),
         ),
     ],
-    response_model=Category,
+    response_model=Role,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def update_one(
     id_: str,
-    update_category: UpdateCategory,
+    update_product: UpdateRole,
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    category = await category_service.get(session, id_)
-    if not category:
+    role_obj = await role_service.get(session, id_)
+    if not role_obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid category id",
+            detail="Role not found",
         )
 
-    if update_category.parent_id:
-        parent = await category_service.get(session, update_category.parent_id)
-        if not parent:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Invalid parent id",
-            )
+    updated_role = await role_service.update(session, id_, update_product)
 
-    updated_category = await category_service.update(session, id_, update_category)
-
-    return updated_category
+    return updated_role
 
 
 @router.delete(
@@ -127,7 +111,7 @@ async def update_one(
     dependencies=[
         Depends(
             permission_required(
-                Entity.Category,
+                entity=Entity.Role,
                 permissions=(Permission.Delete, Permission.Read),
             ),
         ),
@@ -138,11 +122,11 @@ async def delete_one(
     id_: str,
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    category_obj = await category_service.get(session, id_)
-    if not category_obj:
+    role_obj = await role_service.get(session, id_)
+    if not role_obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid category id",
+            detail="Invalid product id",
         )
 
-    await category_service.delete(session, id_)
+    await role_service.delete(session, id_)

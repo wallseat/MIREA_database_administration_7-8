@@ -1,3 +1,3 @@
-from .models import Category, Product, User
+from .models import Category, Product, Role, User, UserRole
 
-__all__ = ["User", "Category", "Product"]
+__all__ = ["User", "Category", "Product", "Role", "UserRole"]

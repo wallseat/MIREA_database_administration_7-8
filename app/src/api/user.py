@@ -1,94 +1,185 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.security import verify_password
-from src.models import User
-from src.schemas.user import (
-    UserAlreadyExists,
-    UserAuthSuccessful,
-    UserInfo,
-    UserLogin,
-    UserRegister,
-)
+from src.core.role import Entity, Permission
+from src.schemas.user import CreateUser, UpdateUser, User, UserAlreadyExists
+from src.services import role_service, user_service
 
-from ._dependencies import get_session, get_user
-from ._utils import create_access_token
+from ._dependencies import get_session, permission_required
 
 router = APIRouter(tags=["user"])
 
 
+@router.get(
+    "/",
+    dependencies=[
+        Depends(
+            permission_required(Entity.User, Permission.Read),
+        ),
+    ],
+    status_code=200,
+    response_model=list[User],
+)
+async def get_all(session: Annotated[AsyncSession, Depends(get_session)]):
+    return await user_service.get_all(session)
+
+
+@router.get(
+    "/{id_}",
+    dependencies=[
+        Depends(
+            permission_required(Entity.User, Permission.Read),
+        ),
+        Depends(
+            permission_required(Entity.Role, Permission.Read),
+        ),
+    ],
+    status_code=status.HTTP_200_OK,
+    response_model=User,
+)
+async def get_one(id_: str, session: Annotated[AsyncSession, Depends(get_session)]):
+    user = await user_service.get(session, id_)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid user id",
+        )
+
+    return user
+
+
 @router.post(
-    "/register",
-    status_code=202,
+    "/",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[
+        Depends(
+            permission_required(
+                Entity.User,
+                [Permission.Read, Permission.Create],
+            ),
+        ),
+    ],
     responses={
         status.HTTP_400_BAD_REQUEST: {"model": UserAlreadyExists},
     },
+    response_model=User,
 )
-async def register(
-    user_register: UserRegister,
-    response: Response,
-    *,
-    session: Annotated[AsyncSession, Depends(get_session)]
+async def add_one(
+    create_user: CreateUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    user = await session.scalar(
-        select(User).where(
-            or_(
-                User.email == user_register.email,
-                User.username == user_register.username,
-            ),
-        ),
+    user = await user_service.get_by_email_username(
+        session,
+        email=create_user.email,
+        username=create_user.username,
     )
 
     if user:
         already_exists = []
-        if user.email == user_register.email:
+        if user.email == create_user.email:
             already_exists.append("email")
-        if user.username == user_register.username:
+        if user.username == create_user.username:
             already_exists.append("username")
 
-        response.status_code = status.HTTP_400_BAD_REQUEST
-        return UserAlreadyExists(fields=already_exists)
+        return HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=UserAlreadyExists(fields=already_exists),
+        )
 
-    user = User(
-        user_register.username,
-        user_register.email,
-        user_register.password,
-    )
-    session.add(user)
-    await session.commit()
+    user = await user_service.create(session, create_user)
+
+    return user
 
 
-@router.post("/auth", status_code=202, response_model=UserAuthSuccessful, tags=["auth"])
-async def auth(
-    user_login: UserLogin, *, session: Annotated[AsyncSession, Depends(get_session)]
-):
-    user = await session.scalar(
-        select(User).where(
-            or_(
-                User.username == user_login.email_or_username,
-                User.email == user_login.email_or_username,
+@router.patch(
+    "/{id_}",
+    dependencies=[
+        Depends(
+            permission_required(
+                Entity.User,
+                [Permission.Read, Permission.Update],
             ),
         ),
-    )
-
-    not_found_exc = HTTPException(
-        detail="Invalid username, email or password",
-        status_code=status.HTTP_404_NOT_FOUND,
-    )
-
+    ],
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=User,
+)
+async def update_one(
+    id_: str,
+    update_user: UpdateUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    user = await user_service.get(session, id_)
     if not user:
-        raise not_found_exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid user id",
+        )
 
-    if not verify_password(user_login.password, user.password_hash):
-        raise not_found_exc
+    user = await user_service.update(session, id_, update_user)
 
-    token, expires = create_access_token(user.id_.hex)
-
-    return UserAuthSuccessful(token=token, expires=expires)
+    return user
 
 
-@router.get("/", status_code=200)
-async def user_info(user: Annotated[User, Depends(get_user)]):
-    return UserInfo.from_orm(user)
+@router.delete(
+    "/{id_}",
+    dependencies=[
+        Depends(
+            permission_required(
+                Entity.User,
+                [Permission.Read, Permission.Delete],
+            ),
+        ),
+    ],
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_one(
+    id_: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    await user_service.delete(session, id_)
+
+
+@router.post(
+    "/{id_}/role",
+    dependencies=[
+        Depends(
+            permission_required(
+                Entity.User,
+                [Permission.Read, Permission.Update],
+            ),
+        ),
+        Depends(
+            permission_required(
+                Entity.Role,
+                [Permission.Read],
+            ),
+        ),
+    ],
+    status_code=status.HTTP_201_CREATED,
+    response_model=User,
+)
+async def add_roles(
+    id_: str,
+    role_ids: list[str],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    user = await user_service.get(session, id_)
+    if not user:
+        raise HTTPException(
+            detail="User not found",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    roles = await role_service.get_many(session, role_ids)
+
+    if len(roles) != len(role_ids):
+        raise HTTPException(
+            detail="Role not found",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    user = await user_service.add_roles(session, id_, role_ids)
+
+    return user

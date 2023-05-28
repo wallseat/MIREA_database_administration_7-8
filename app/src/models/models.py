@@ -116,3 +116,18 @@ class Product(Base):
 
     async def get_category(self, session: AsyncSession) -> Category | None:
         return await session.get(Category, self.parent_id)
+
+
+class Role(Base):
+    __tablename__ = "role"
+
+    id_: Mapped[ulid_pk] = mapped_column("id", init=False)
+    name: Mapped[varchar255]
+    permissions: Mapped[jsonb] = mapped_column(default=dict)
+
+
+class UserRole(Base):
+    __tablename__ = "user_role"
+
+    user_id: Mapped[ulid] = mapped_column(ForeignKey("user.id"), primary_key=True)
+    role_id: Mapped[ulid] = mapped_column(ForeignKey("role.id"), primary_key=True)

@@ -2,15 +2,28 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.role import Entity, Permission
 from src.schemas.product import CreateProduct, Product, UpdateProduct
 from src.services import category_service, product_service
 
-from ._dependencies import get_session
+from ._dependencies import get_session, permission_required
 
 router = APIRouter(tags=["product"])
 
 
-@router.get("/", response_model=list[Product], status_code=status.HTTP_200_OK)
+@router.get(
+    "/",
+    dependencies=[
+        Depends(
+            permission_required(
+                entity=Entity.Product,
+                permissions=Permission.Read,
+            ),
+        ),
+    ],
+    response_model=list[Product],
+    status_code=status.HTTP_200_OK,
+)
 async def get_all(
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
@@ -19,7 +32,19 @@ async def get_all(
     return products
 
 
-@router.get("/{id_}", response_model=Product, status_code=status.HTTP_200_OK)
+@router.get(
+    "/{id_}",
+    dependencies=[
+        Depends(
+            permission_required(
+                entity=Entity.Product,
+                permissions=Permission.Read,
+            ),
+        ),
+    ],
+    response_model=Product,
+    status_code=status.HTTP_200_OK,
+)
 async def get_one(
     id_: str,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -29,7 +54,25 @@ async def get_one(
     return product
 
 
-@router.post("/", response_model=Product, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    dependencies=[
+        Depends(
+            permission_required(
+                entity=Entity.Product,
+                permissions=(Permission.Create, Permission.Read),
+            ),
+        ),
+        Depends(
+            permission_required(
+                entity=Entity.Category,
+                permissions=Permission.Read,
+            ),
+        ),
+    ],
+    response_model=Product,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_one(
     create_product: CreateProduct,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -47,7 +90,25 @@ async def add_one(
     return created_product
 
 
-@router.patch("/{id_}", response_model=Product, status_code=status.HTTP_202_ACCEPTED)
+@router.patch(
+    "/{id_}",
+    dependencies=[
+        Depends(
+            permission_required(
+                entity=Entity.Product,
+                permissions=(Permission.Update, Permission.Read),
+            ),
+        ),
+        Depends(
+            permission_required(
+                entity=Entity.Category,
+                permissions=Permission.Read,
+            ),
+        ),
+    ],
+    response_model=Product,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def update_one(
     id_: str,
     update_product: UpdateProduct,
@@ -73,7 +134,18 @@ async def update_one(
     return updated_product
 
 
-@router.delete("/{id_}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{id_}",
+    dependencies=[
+        Depends(
+            permission_required(
+                entity=Entity.Product,
+                permissions=(Permission.Delete, Permission.Read),
+            ),
+        ),
+    ],
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def delete_one(
     id_: str,
     session: Annotated[AsyncSession, Depends(get_session)],
