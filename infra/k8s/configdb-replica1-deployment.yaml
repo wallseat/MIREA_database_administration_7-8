@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f infra/docker-compose.yml
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: configdb-replica1
+  name: configdb-replica1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: configdb-replica1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f infra/docker-compose.yml
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/infra-internalnetwork: "true"
+        io.kompose.service: configdb-replica1
+    spec:
+      containers:
+        - args:
+            - mongod
+            - -f
+            - /etc/mongod.conf
+            - --configsvr
+            - --replSet
+            - configdb
+          env:
+            - name: REPSET_NAME
+              value: configdb
+          image: configdb-replica1
+          name: configdb-replica1
+          ports:
+            - containerPort: 27017
+          resources: {}
+          volumeMounts:
+            - mountPath: /etc/mongod.conf
+              name: configdb-replica1-claim0
+      restartPolicy: Always
+      volumes:
+        - name: configdb-replica1-claim0
+          persistentVolumeClaim:
+            claimName: configdb-replica1-claim0
+status: {}

@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: infra-internalnetwork
+spec:
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              io.kompose.network/infra-internalnetwork: "true"
+  podSelector:
+    matchLabels:
+      io.kompose.network/infra-internalnetwork: "true"
