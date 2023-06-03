@@ -4,6 +4,7 @@ RUN apt-get update && apt-get -q install -y
 
 COPY --chown=mongodb:mongodb mongod-start.sh /usr/local/bin/
 COPY --chown=mongodb:mongodb mongod-runextra.sh /usr/local/bin/
+COPY mongod.conf /etc/mongod.conf
 
 RUN chmod u+x /usr/local/bin/mongod-start.sh /usr/local/bin/mongod-runextra.sh
 

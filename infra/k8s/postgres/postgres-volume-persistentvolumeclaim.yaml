@@ -3,12 +3,12 @@ kind: PersistentVolumeClaim
 metadata:
   creationTimestamp: null
   labels:
-    io.kompose.service: configdb-replica1-claim0
-  name: configdb-replica1-claim0
+    io.kompose.service: postgres-volume
+  name: postgres-volume
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 100Mi
+      storage: 10Gi
 status: {}

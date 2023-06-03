@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    kompose.cmd: kompose convert -f infra/docker-compose.yml
+    kompose.cmd: kompose convert -f infra/docker-compose.yml -o infra/k8s
     kompose.version: 1.28.0 (c4137012e)
   creationTimestamp: null
   labels:
@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       annotations:
-        kompose.cmd: kompose convert -f infra/docker-compose.yml
+        kompose.cmd: kompose convert -f infra/docker-compose.yml -o infra/k8s
         kompose.version: 1.28.0 (c4137012e)
       creationTimestamp: null
       labels:
@@ -36,7 +36,8 @@ spec:
           env:
             - name: SHARD_LIST
               value: shard0/shard0-replica0:27017,shard0-replica1:27017;shard1/shard1-replica0:27017,shard1-replica1:27017
-          image: mongos-router
+          image: mongos:latest
+          imagePullPolicy: Never
           name: mongos-router
           ports:
             - containerPort: 27017

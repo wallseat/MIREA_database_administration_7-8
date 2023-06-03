@@ -2,28 +2,28 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    kompose.cmd: kompose convert -f infra/docker-compose.yml
+    kompose.cmd: kompose convert -f infra/docker-compose.yml -o infra/k8s
     kompose.version: 1.28.0 (c4137012e)
   creationTimestamp: null
   labels:
-    io.kompose.service: shard1-replica0
-  name: shard1-replica0
+    io.kompose.service: shard0-replica0
+  name: shard0-replica0
 spec:
   replicas: 1
   selector:
     matchLabels:
-      io.kompose.service: shard1-replica0
+      io.kompose.service: shard0-replica0
   strategy:
     type: Recreate
   template:
     metadata:
       annotations:
-        kompose.cmd: kompose convert -f infra/docker-compose.yml
+        kompose.cmd: kompose convert -f infra/docker-compose.yml -o infra/k8s
         kompose.version: 1.28.0 (c4137012e)
       creationTimestamp: null
       labels:
         io.kompose.network/infra-internalnetwork: "true"
-        io.kompose.service: shard1-replica0
+        io.kompose.service: shard0-replica0
     spec:
       containers:
         - args:
@@ -32,23 +32,19 @@ spec:
             - /etc/mongod.conf
             - --shardsvr
             - --replSet
-            - shard1
+            - shard0
           env:
             - name: DO_INIT_REPSET
               value: "true"
             - name: REPSET_NAME
-              value: shard1
-          image: shard1-replica0
-          name: shard1-replica0
+              value: shard0
+          image: mongod:latest
+          imagePullPolicy: Never
+          name: shard0-replica0
           ports:
             - containerPort: 27017
           resources: {}
-          volumeMounts:
-            - mountPath: /etc/mongod.conf
-              name: shard1-replica0-claim0
+
       restartPolicy: Always
-      volumes:
-        - name: shard1-replica0-claim0
-          persistentVolumeClaim:
-            claimName: shard1-replica0-claim0
+
 status: {}

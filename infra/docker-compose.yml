@@ -2,10 +2,10 @@ version: '3.9'
 
 services:
     app:
-        image: 'app:latest'
+        image: app:latest
         container_name: shopper_backend
         build:
-            context: app/
+            context: ../app/
         ports:
             - 8080:8080
         volumes:
@@ -20,23 +20,59 @@ services:
                 "--host",
                 "0.0.0.0"
             ]
-    postgres:
-        image: postgres:15.2-alpine
-        container_name: shopper_postgres
+
+    postgres-master:
+        image: docker.io/bitnami/postgresql:15.3.0-debian-11-r4
+        container_name: shopper_postgres-master
+        volumes:
+            - postgres_volume:/var/lib/postgresql/data/
+        environment:
+            - POSTGRESQL_USERNAME=${DB_USER}
+            - POSTGRESQL_PASSWORD=${DB_PASSWORD}
+            - POSTGRESQL_DATABASE=${DB_NAME}
+
+            - POSTGRESQL_PGAUDIT_LOG=READ,WRITE
+            - POSTGRESQL_LOG_HOSTNAME=true
+
+            - POSTGRESQL_REPLICATION_MODE=master
+            - POSTGRESQL_REPLICATION_USER=${POSTGRES_REPLICATION_USER}
+            - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRES_REPLICATION_PASSWORD}
+
         ports:
             - 5432:5432
 
+        restart: always
+
+    postgres-slave:
+        image: docker.io/bitnami/postgresql:15.3.0-debian-11-r4
+        container_name: shopper_postgres-replica
+        depends_on:
+            - postgres-master
         environment:
-            - POSTGRES_USER=${DB_USER}
-            - POSTGRES_PASSWORD=${DB_PASSWORD}
-            - POSTGRES_DATABASE=${DB_NAME}
+            - POSTGRESQL_USERNAME=${DB_USER}
+            - POSTGRESQL_PASSWORD=${DB_PASSWORD}
+
+            - POSTGRESQL_PGAUDIT_LOG=READ,WRITE
+            - POSTGRESQL_LOG_HOSTNAME=true
+
+            - POSTGRESQL_REPLICATION_MODE=slave
+            - POSTGRESQL_REPLICATION_USER=${POSTGRES_REPLICATION_USER}
+            - POSTGRESQL_REPLICATION_PASSWORD=${POSTGRES_REPLICATION_PASSWORD}
+
+            - POSTGRESQL_MASTER_HOST=postgres-master
+            - POSTGRESQL_MASTER_PORT_NUMBER=5432
+        
+        expose:
+          - 5432
 
     shard0-replica0:
         build:
             context: mongod
+        image: mongod:latest
+        pull_policy: never
+
         command: mongod -f /etc/mongod.conf --shardsvr --replSet shard0
-        volumes:
-            - ./mongod/mongod.conf:/etc/mongod.conf
+
         networks:
             internalnetwork:
                 aliases:
@@ -45,14 +81,16 @@ services:
             - REPSET_NAME=shard0
             - DO_INIT_REPSET=true
         expose:
-            - "27017"
+            - 27017
 
     shard0-replica1:
         build:
             context: mongod
+        image: mongod:latest
+        pull_policy: never
+
         command: mongod -f /etc/mongod.conf --shardsvr --replSet shard0
-        volumes:
-            - ./mongod/mongod.conf:/etc/mongod.conf
+
         networks:
             internalnetwork:
                 aliases:
@@ -60,14 +98,16 @@ services:
         environment:
             - REPSET_NAME=shard0
         expose:
-            - "27017"
+            - 27017
 
     shard1-replica0:
         build:
             context: mongod
+        image: mongod:latest
+        pull_policy: never
+
         command: mongod -f /etc/mongod.conf --shardsvr --replSet shard1
-        volumes:
-            - ./mongod/mongod.conf:/etc/mongod.conf
+
         networks:
             internalnetwork:
                 aliases:
@@ -76,14 +116,16 @@ services:
             - REPSET_NAME=shard1
             - DO_INIT_REPSET=true
         expose:
-            - "27017"
+            - 27017
 
     shard1-replica1:
         build:
             context: mongod
+        image: mongod:latest
+        pull_policy: never
+
         command: mongod -f /etc/mongod.conf --shardsvr --replSet shard1
-        volumes:
-            - ./mongod/mongod.conf:/etc/mongod.conf
+
         networks:
             internalnetwork:
                 aliases:
@@ -91,14 +133,16 @@ services:
         environment:
             - REPSET_NAME=shard1
         expose:
-            - "27017"
+            - 27017
 
     configdb-replica0:
         build:
             context: mongod
+        image: mongod:latest
+        pull_policy: never
+
         command: mongod -f /etc/mongod.conf --configsvr --replSet configdb
-        volumes:
-            - ./mongod/mongod.conf:/etc/mongod.conf
+
         networks:
             internalnetwork:
                 aliases:
@@ -107,14 +151,16 @@ services:
             - REPSET_NAME=configdb
             - DO_INIT_REPSET=true
         expose:
-            - "27017"
+            - 27017
 
     configdb-replica1:
         build:
             context: mongod
+        image: mongod:latest
+        pull_policy: never
+
         command: mongod -f /etc/mongod.conf --configsvr --replSet configdb
-        volumes:
-            - ./mongod/mongod.conf:/etc/mongod.conf
+
         networks:
             internalnetwork:
                 aliases:
@@ -122,11 +168,14 @@ services:
         environment:
             - REPSET_NAME=configdb
         expose:
-            - "27017"
+            - 27017
 
     mongos-router:
         build:
             context: mongos
+        image: mongos:latest
+        pull_policy: never
+
         command: mongos --port 27017 --bind_ip 0.0.0.0 --configdb "configdb/configdb-replica0:27017,configdb-replica1:27017"
         depends_on:
             - shard0-replica0
@@ -141,10 +190,13 @@ services:
                     - mongos-router
         environment:
             - SHARD_LIST=shard0/shard0-replica0:27017,shard0-replica1:27017;shard1/shard1-replica0:27017,shard1-replica1:27017
-        expose:
-            - "27017"
+
         ports:
-            - "27017:27017"
+            - 27017:27017
 
 networks:
     internalnetwork: {}
+
+volumes:
+  postgres_volume: 
+    driver: local

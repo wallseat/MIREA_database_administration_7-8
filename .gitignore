@@ -2,3 +2,4 @@
 .python-version
 .env
 local/
+*.env.yaml
